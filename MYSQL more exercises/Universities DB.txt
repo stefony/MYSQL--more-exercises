@@ -1,0 +1,206 @@
+The Universities DB is designed to make a connection between universities for exchange programs, information and help students, parents, and academic institutions make informed decisions about their education choices. The system provides users with easy access to information on universities and their courses, enabling them to compare different options and make informed decisions.
+Help by implementing the database structure, optimize the system and make this powerful tool for students, and researchers worldwide, enabling them to make informed decisions about higher education, career choices, and research opportunities.
+
+The universities_db needs to hold information about countries, cities, universities, students, courses.
+Your task is to create a database called universities_db. Then you will have to create several tables.
+•	countries – contains information about the countries.
+•	cities – contains information about the cities.
+o	Each city has a country.
+•	universities – contains information about the universities.
+o	Each university has a city.
+•	students – contains information about the students.
+o	Each student has a city.
+•	courses – contains information about the courses.
+o	Each course has a university.
+•	students_courses – a many to many mapping table between the students and the courses.
+
+
+CREATE TABLE countries(
+id INT PRIMARY KEY AUTO_INCREMENT,
+name VARCHAR(40) UNIQUE 
+);
+
+CREATE TABLE cities(
+id INT PRIMARY KEY AUTO_INCREMENT,
+name VARCHAR(40) UNIQUE,
+population INT,
+country_id INT,
+FOREIGN KEY (country_id) REFERENCES countries(id)
+);
+
+CREATE TABLE universities(
+id INT PRIMARY KEY AUTO_INCREMENT,
+name VARCHAR(60) UNIQUE,
+address VARCHAR(80) UNIQUE,
+tuition_fee DECIMAL(19,2),
+number_of_staff INT,
+city_id INT,
+FOREIGN KEY (city_id) REFERENCES cities(id)
+);
+
+CREATE TABLE students(
+id INT PRIMARY KEY AUTO_INCREMENT,
+first_name  VARCHAR(40),
+last_name VARCHAR(40),
+age INT,
+phone VARCHAR(20) UNIQUE,
+email VARCHAR(255) UNIQUE,
+is_graduated BOOLEAN,
+city_id INT,
+FOREIGN KEY (city_id) REFERENCES cities(id)
+);
+
+CREATE TABLE courses(
+id INT PRIMARY KEY AUTO_INCREMENT,
+name VARCHAR(40) UNIQUE,
+duration_hours DECIMAL(19,2),
+start_date DATE,
+teacher_name VARCHAR(60) UNIQUE,
+description TEXT,
+university_id INT,
+FOREIGN KEY (university_id) REFERENCES universities(id)
+);
+
+CREATE TABLE students_courses(
+grade DECIMAL(19,2),
+student_id INT,
+course_id INT,
+FOREIGN KEY (student_id) REFERENCES students(id),
+FOREIGN KEY (course_id) REFERENCES courses(id)
+);
+
+02.	Insert
+You will have to insert records of data into the courses table, based on the courses table.
+For courses with id equal or lesser than 5, insert data in the course table with the following values:
+•	name – set it to the teacher name followed by white space and then "course"
+(teacher_name + " " + "course")
+•	duration_hours – set it to the total number of characters from the course name and the result divided by 10.
+•	start_date – set it to the start date of the course but 5 days later.
+•	teacher_name – set it to the teacher name but reversed. 
+•	description – set it to "Course " followed by the teacher name and the description but reversed.
+ ("Course " + teacher_name + description_reversed)
+•	university¬_id – set it to the day of the start date of the original course.
+
+INSERT INTO courses (name, duration_hours, start_date, teacher_name, description, university_id)
+SELECT 
+    CONCAT(teacher_name, ' ', 'course') AS name,
+    (CHAR_LENGTH(teacher_name) + LENGTH(' course')) / 10 AS duration_hours,
+    DATE_ADD(start_date, INTERVAL 5 DAY) AS start_date,
+    REVERSE(teacher_name) AS teacher_name,
+    CONCAT('Course ', REVERSE(CONCAT(teacher_name, description))) AS description,
+    DAY(start_date) AS university_id
+FROM
+    courses
+WHERE
+    id <= 5;
+
+03.	Update
+Due to inflation and the rising cost of living some universities must raise their tuition fees.
+Raise the tuition fee by 300 for all universities with id equal or greater than 5 and less than 12 (inclusive).
+
+UPDATE universities
+SET tuition_fee= tuition_fee+300
+WHERE universities.id >=5 AND universities.id <=12;
+
+04.	Delete
+There are some minor bugs in the system and some universities didn’t send the correct information. Delete all universities for which we don’t have information about the number of staff.
+
+DELETE FROM universities
+WHERE number_of_staff IS NULL;
+
+05.	Cities
+Extract from the universities_db system database, info about the cities.
+Order the results by population in descending order;
+Required Columns
+•	id
+•	name
+•	population
+•	country_id
+
+SELECT  
+id,
+name,
+population,
+country_id
+FROM cities
+ORDER BY population DESC;
+
+06.	Students age
+Write a query that returns: first_name, last_name, age, phone and email from table students. Filter students with an age equal or higher than 21.
+Order the results descending by first_name, then by email ascending, then by id in ascending order and show only the first 10 results.
+Required Columns
+•	first_name
+•	last_name 
+•	age
+•	phone
+•	email
+
+SELECT 
+first_name,
+ last_name,
+ age, 
+ phone,
+ email 
+ FROM students
+ HAVING age >=21
+ ORDER BY first_name DESC, email ASC, id ASC
+ LIMIT 10;
+
+07.	New students
+Some students are not signed up for any course but want to be registered in the system with accounts. To find the account details write a query that returns: full_name, username and password for all students who do not have any assigned course. The full_name is their first_name and last_name separated by whitespace. The username is generated by using 10 characters from their email starting from the 2nd letter. The password is their phone number but reversed.  
+Order by password in descending order.
+Required Columns
+•	full_name (first_name + " " + last_name)
+•	username (10 characters long starting from the 2nd)
+•	password (phone number but reversed)
+
+SELECT CONCAT(first_name, ' ', last_name) AS full_name,
+       SUBSTRING(email, 2, 10) AS username,
+       REVERSE(phone) AS password
+FROM students
+WHERE id NOT IN (SELECT DISTINCT student_id FROM students_courses)
+ORDER BY password DESC;
+
+08.	Students count
+Every university has courses with students. The directors of every university want to know the total number of students assigned to courses. Extract from the database the students_count (total number of assigned students) in each university and the corresponding university_name. Get only those universities with students_count equal or greater than 8. 
+Order the results descending by students_count and then by university_name in descending order. 
+ Required Columns
+•	students_count
+•	university_name
+
+SELECT COUNT(c.id) students_count, u.name university_name
+ FROM universities u
+ JOIN courses c on u.id = c.university_id
+ JOIN students_courses sc on c.id = sc.course_id
+GROUP BY u.name
+HAVING students_count >= 8
+ORDER BY students_count desc, u.name desc;
+
+09.	Price rankings
+Make it easier for students when they are searching for a new university. From the database extract the university_name, city_name, address, price_rank and tuition_fee. If the tuition fee is less than 800 (exclusive) the user must see "cheap", equal or above 800 and less than 1200 it should display "normal", equal or above 1200 and less than 2500 it should display "high" and equal or above that it should display "expensive".  
+Order the results ascending by tuition_fee. 
+Required Columns
+•	university_name
+•	city_name
+•	address
+•	price_rank (less than 800 – "cheap", equal or above 800 and less than 1200 – "normal", equal or above 1200 and less than 2500 – "high", equal or above 2500 – "expensive)
+•	tuition_fee 
+
+
+SELECT 
+    u.name AS university_name,
+    c.name AS city_name,
+    u.address,
+    CASE
+        WHEN u.tuition_fee < 800 THEN 'cheap'
+        WHEN u.tuition_fee >= 800 AND u.tuition_fee < 1200 THEN 'normal'
+        WHEN u.tuition_fee >= 1200 AND u.tuition_fee < 2500 THEN 'high'
+        ELSE 'expensive'
+    END AS price_rank,
+    u.tuition_fee
+FROM 
+    universities u
+JOIN 
+    cities c ON u.city_id = c.id
+ORDER BY 
+    u.tuition_fee ASC;	

@@ -1,0 +1,192 @@
+A client who owns a big online store for electronic devices needs your help to manage the database of the shop.
+Help him by implementing the database structure, optimizing his system and making analysis for the future management strategy of the shop.
+The online_stores’s Database needs to hold information about products, customers, orders, categories, brands, and reviews.
+Your task is to create a database called online_store. Then you will have to create several tables.
+•	brands – contains information about the brands.
+•	categories – contains information about the categories.
+•	reviews – contains information about the reviews.
+•	products – contains information about the products.
+o	Each product has a brand, review and category.
+•	customers – contains information about the customers.
+•	orders – contains information about the orders.
+o	Each order has a customer. 
+•	orders_products – a many to many mapping table between the orders and the products.
+
+1.
+CREATE TABLE brands(
+id INT PRIMARY KEY AUTO_INCREMENT,
+name VARCHAR(40) UNIQUE
+);
+
+CREATE TABLE categories(
+id INT PRIMARY KEY AUTO_INCREMENT,
+name VARCHAR(40) UNIQUE
+);
+
+CREATE TABLE reviews(
+id INT PRIMARY KEY AUTO_INCREMENT,
+content TEXT ,
+rating DECIMAL(10,2),
+picture_url VARCHAR(80),
+published_at DATETIME
+);
+
+CREATE TABLE products(
+id INT PRIMARY KEY AUTO_INCREMENT,
+name VARCHAR(40),
+price DECIMAL(19,2),
+quantity_in_stock INT,
+description TEXT,
+brand_id INT,
+category_id INT,
+review_id INT,
+FOREIGN KEY(brand_id) REFERENCES brands(id),
+FOREIGN KEY(category_id) REFERENCES categories(id),
+FOREIGN KEY(review_id) REFERENCES reviews(id)
+);
+
+CREATE TABLE customers(
+id INT PRIMARY KEY AUTO_INCREMENT,
+first_name VARCHAR(20),
+last_name VARCHAR(20),
+phone VARCHAR(30)UNIQUE,
+address VARCHAR(60),
+discount_card BIT(1)
+);
+
+CREATE TABLE orders(
+id INT PRIMARY KEY AUTO_INCREMENT,
+order_datetime DATETIME,
+customer_id INT,
+FOREIGN KEY(customer_id) REFERENCES customers(id)
+);
+
+CREATE TABLE orders_products(
+order_id INT,
+product_id INT,
+FOREIGN KEY(order_id) REFERENCES orders(id),
+FOREIGN KEY(product_id) REFERENCES products(id)
+);
+
+2.	Insert
+You will have to insert records of data into the reviews table, based on the products table.
+For products with an id equal or greater than 5, insert data in the reviews table with the following values:
+•	content – set it to the first 15 characters from the description of the product.
+•	picture_url – set it to the product's name but reversed.
+•	published_at – set it to 10-10-2010.
+•	rating – set it to the price of the product divided by 8.
+
+INSERT INTO reviews (content,picture_url,published_at,rating)
+SELECT
+LEFT(p.description,15) AS content,
+REVERSE(p.name) AS picture_url,
+'2010-10-10' AS published_at,
+  p.price/8 AS rating 
+  FROM products p
+  WHERE p.id>=5;
+
+
+3.Update
+Reduce all product quantity by 5 for products with quantity equal to or greater than 60 and less than 70 (inclusive).
+UPDATE products
+SET quantity_in_stock = quantity_in_stock - 5
+WHERE quantity_in_stock >=60 AND quantity_in_stock<=70;
+
+4.Delete all customers, who didn't order anything.
+DELETE FROM customers
+WHERE id NOT IN (
+    SELECT DISTINCT customer_id
+    FROM orders
+    );
+
+5.Extract from the online_store system database, info about the name of categories.
+Order the results by category_name in descending order;
+Required Columns
+•	id (categories)
+•	name
+
+SELECT
+id,
+name
+FROM categories
+ORDER BY name DESC;
+
+6.	Quantity
+Write a query that returns: product_id, brand_id, name and quantity from table products. Filter products whose price is higher than 1000 and their quantity is lower than 30.
+Order the results ascending by quantity_in_stock, then by id.
+Required Columns
+•	id (product)
+•	brand_id 
+•	name (product)
+•	quantity_in_stock
+
+SELECT 
+p.id,
+p.brand_id,
+p.name, 
+p.quantity_in_stock
+FROM products p
+WHERE price > 1000 AND quantity_in_stock <30
+ORDER BY quantity_in_stock ASC, id;
+
+
+7.Write a query that returns: id, content, rating, picture_url and published_at for all reviews whose content starts with 'My' and the characters of the content are more than 61 symbols.
+Order by rating in descending order.
+Required Columns
+•	id (reviews)
+•	content
+•	rating
+•	picture_url
+•	published_at
+
+SELECT
+id,
+content,
+rating,
+picture_url,
+published_at
+FROM reviews
+WHERE SUBSTRING(content,1,2)='My' AND CHAR_LENGTH(content)>61
+ORDER BY rating DESC;
+
+8.   First customers
+There are many customers in our shop system, but we need to find only those who are clients from the beginning of the online store creation.
+Extract from the database, the full name of the customer, the address, and the date of order. The year must be lower or equal to 2018.
+Order the results descending by full_name.
+Required Columns
+•	full_name (first_name + " " + last_name)
+•	address
+•	order_datetime
+
+SELECT 
+CONCAT(c.first_name, ' ',c.last_name) AS full_name,
+c.address,
+o.order_datetime
+FROM customers AS c
+JOIN orders AS o ON c.id=o.customer_id
+WHERE YEAR(order_datetime)<= 2018
+ORDER BY full_name DESC;
+
+9.	Best categories
+Extract from the database, the top 5 categories.
+Order the results descending by items count, then by total_quantity in ascending. 
+Required Columns
+•	items_count (number of items in the category)
+•	name
+•	total_quantity (sum of all items in this category)
+
+SELECT 
+    COUNT(p.id) AS items_count,
+    c.name,
+    SUM(p.quantity_in_stock) AS total_quantity
+FROM 
+    categories c
+JOIN 
+    products p ON c.id = p.category_id
+GROUP BY 
+    c.id, c.name
+ORDER BY 
+    items_count DESC, total_quantity ASC
+LIMIT 5;
+
+

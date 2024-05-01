@@ -1,0 +1,239 @@
+Years ago, animals and plants were the masters of nature. Our ancestors lived in harmony and understanding with them. Today, unfortunately, man prevails over this idyll and enters, steals and destroys an increasingly large territory - the home of the wild world. Its inhabitants are forced to live in smaller and smaller spaces, sized by the same person with whom they once shared. These are the wildlife preserves.
+
+The preserve’s Database needs to hold information about continents, countries, workers, preserves, and positions.
+Your task is to create a database called preserves_db. Then you will have to create several tables.
+•	continents – contains information about the continents.
+•	countries – contains information about the countries.
+o	Each country has a continent.
+•	preserves – contains information about the preserves.
+o	Each preserve has a country.
+•	workers – contains information about the workers.
+o	Each worker has a position.
+•	positions – contains information about the positions.
+•	countries_preserves – a many to many mapping table between the countries and the preserves.
+
+CREATE TABLE continents(
+id INT PRIMARY KEY AUTO_INCREMENT,
+name VARCHAR(40) UNIQUE
+);
+
+CREATE TABLE countries(
+id INT PRIMARY KEY AUTO_INCREMENT,
+name VARCHAR(40) UNIQUE,
+country_code VARCHAR(10) UNIQUE,
+continent_id INT,
+FOREIGN KEY(continent_id) REFERENCES continents(id)
+);
+
+CREATE TABLE preserves(
+id INT PRIMARY KEY AUTO_INCREMENT,
+name VARCHAR(255) UNIQUE,
+latitude DECIMAL(9,6),
+longitude DECIMAL(9,6),
+area INT,
+type VARCHAR(20),
+established_on DATE NULL
+);
+
+CREATE TABLE positions(
+id INT PRIMARY KEY AUTO_INCREMENT,
+name VARCHAR(40) UNIQUE,
+description TEXT,
+is_dangerous BOOLEAN
+);
+
+CREATE TABLE workers(
+id INT PRIMARY KEY AUTO_INCREMENT,
+first_name VARCHAR(40),
+last_name VARCHAR(40),
+age INT,
+personal_number VARCHAR(20) UNIQUE,
+salary DECIMAL(19,2),
+is_armed BOOLEAN,
+start_date DATE,
+preserve_id INT,
+position_id INT,
+FOREIGN KEY(preserve_id) REFERENCES preserves(id),
+FOREIGN KEY(position_id) REFERENCES positions(id)
+);
+
+CREATE TABLE countries_preserves(
+country_id INT,
+preserve_id INT,
+FOREIGN KEY(country_id) REFERENCES countries(id),
+FOREIGN KEY(preserve_id) REFERENCES preserves(id)
+);
+
+
+02.	Insert
+You will have to insert records of data into the preserves table, based on the preserves table.
+For all preserves which are located in the southern hemisphere (latitude < 0), insert data in the preserves table with the following values:
+•	name – set it to the preserve name followed by white space and then "is in South Hemisphere" text
+(name + " " + "is in South Hemisphere")
+•	latitude – keep the same
+•	longitude – keep the same
+•	area – set it to area multiplied by preserve id
+•	type – set it to the preserve type but in lowercase
+•	established_on – keep the same
+
+INSERT INTO preserves(name,latitude,longitude,area,type,established_on)
+SELECT
+CONCAT(name,' ','is in South Hemisphere') AS 'name',
+latitude AS 'latitude',
+longitude AS 'longitude',
+area * id AS 'area',
+LOWER(type) AS 'type',
+established_on AS 'established_on'
+FROM preserves
+WHERE latitude < 0;
+
+
+03.	Update
+Due to the dangerous nature of their work, increase the salary of the workers with position_id - 5, 8, 11 and 13 by 500.
+
+UPDATE workers
+SET salary = salary + 500
+WHERE position_id IN (5, 8, 11, 13)
+
+
+04.	Delete
+Delete all preserves, without information about their establishment.
+DELETE FROM  preserves
+WHERE established_on IS NULL;
+
+05.	Most experienced workers
+Extract from the preserves_db database, info about the workers with more than 5 years of experience.
+(experience must be calculated from the day the workers started working until 01-01-2024)
+Order the results by days_of_experience in descending order and show only the first 10 results.
+Required Columns
+•	full_name (first_name + " " + last_name)
+•	days_of_experience (duration of experience in days)
+
+SELECT
+CONCAT(first_name, ' ',last_name) AS 'full_name',
+DATEDIFF('2024-01-01', start_date) AS days_of_experience
+FROM workers
+WHERE DATEDIFF('2024-01-01', start_date) > 1825
+ORDER BY days_of_experience DESC
+LIMIT 10;
+
+
+06.	Worker's salary
+Write a query that returns: worker_id, first_name, last_name , preserve name and country_code from table workers. Filter only the workers whose salary is higher than 5000 and their age is lower than 50.
+Order the results ascending by country_code.
+Required Columns
+•	id (worker)
+•	first_name 
+•	last_name
+•	preserve_name
+•	country_code
+
+
+SELECT 
+    w.id, 
+    w.first_name, 
+    w.last_name, 
+    p.name AS 'preserve_name', 
+    c.country_code
+FROM workers AS w
+INNER JOIN preserves AS p ON w.preserve_id = p.id
+INNER JOIN countries_preserves AS cp ON p.id = cp.preserve_id
+INNER JOIN countries AS c ON cp.country_id = c.id
+WHERE w.salary > 5000 AND w.age < 50
+ORDER BY c.country_code ASC;
+
+
+07.	Armed workers count
+Write a query that returns: the name of the preserve and the total count of armed workers who worked there.
+Order by armed_workers count in descending order, then by preserve name ascending.
+Required Columns
+•	name (preserve)
+•	armed_workers
+
+SELECT 
+p.name AS preserve_name, 
+COUNT(w.id) AS armed_workers
+FROM preserves AS p
+INNER JOIN workers AS w ON p.id = w.preserve_id AND w.is_armed = 1
+GROUP BY 
+    p.id
+ORDER BY 
+    COUNT(w.id) DESC, 
+    p.name ASC;
+
+
+08.	Oldest preserves
+There are many preserves around the world, but we need to find the oldest ones.
+Extract from the preserves_db database, the name, country_code and year of establishment for the five oldest preserves, which are founded in May.
+Order the results ascending by established_on.
+Required Columns
+•	name (preserve)
+•	country_code
+•	founded_in
+
+SELECT 
+    p.name AS preserve_name, 
+    c.country_code, 
+    EXTRACT(YEAR FROM p.established_on) AS founded_in
+FROM preserves AS p
+JOIN countries_preserves AS cp ON p.id = cp.preserve_id
+JOIN countries AS c ON cp.country_id = c.id
+WHERE MONTH(p.established_on) = 5
+ORDER BY p.established_on ASC
+LIMIT 5;
+
+09.	Preserve categories
+Let's make the size of the preserve a bit abstract by categorising it. From the database extract the id, name and category. If the area is equal to or less than 100 the user must see "very small", above 100 and equal to or less than 1000 it should display "small", above 1000 and equal to or less than 10000 it should display "medium", above 10000 and equal to or less than 50000 should display "large" and above 50000 it should display "very large"
+Order the results descending by area. 
+Required Columns
+•	id (preserve)
+•	name (preserve)
+•	category
+
+
+SELECT
+p.id,
+p.name,
+CASE
+        WHEN p.area <= 100 THEN 'very small'
+        WHEN p.area >= 100 AND p.area <1000 THEN 'small'
+        WHEN p.area >= 1000 AND p.area <10000 THEN 'medium'
+        WHEN p.area >= 10000 AND p.area <50000 THEN 'large'
+        ELSE 'very large'
+    END AS 'category'
+    FROM preserves p
+    ORDER BY p.area DESC;
+
+
+
+10.	Extract average salary
+Create a user defined function with the name udf_average_salary_by_position_name (name VARCHAR(40)) that receives a position name and returns the average amount of salary for this position for all workers who practice it
+Required Columns
+•	name (position)
+•	position_average_salary (average_salary_amount)
+
+CREATE FUNCTION udf_average_salary_by_position_name(position_name VARCHAR(40))
+RETURNS DECIMAL(19,2)
+DETERMINISTIC
+BEGIN
+    DECLARE avg_salary DECIMAL(19,2);
+    SELECT AVG(w.salary) INTO avg_salary
+    FROM workers w
+    JOIN positions AS p ON w.position_id = p.id
+    WHERE p.name = position_name;
+    RETURN avg_salary;
+END
+
+11.	Improving the standard of living
+Create a stored procedure udp_increase_salaries_by_country which accepts the following parameters:
+•	country_name (VARCHAR(40))
+Extract data on all workers who work in all preserves of the territory of the given country and increase their salaries by 5%
+CREATE PROCEDURE udp_increase_salaries_by_country(IN country_name VARCHAR(40))
+BEGIN
+    UPDATE workers w
+    JOIN preserves AS p ON w.preserve_id = p.id
+    JOIN countries_preserves AS cp ON p.id = cp.preserve_id
+    JOIN countries AS c ON cp.country_id = c.id
+    SET w.salary = w.salary * 1.05
+    WHERE c.name = country_name;
+END

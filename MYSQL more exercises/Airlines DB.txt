@@ -1,0 +1,207 @@
+An airline database is an invaluable asset for many airline departments, especially flight operations. The aim is to provide the most accurate, complete and relevant data to assist in your pre-flight planning and dispatch operations. Now you are the leader of the team and you need to manage the system so they can keep track of all flights and provide safety for the passengers.
+
+The airlines_db’s Database needs to hold information about airplanes, flights, passengers and countries.
+Your task is to create a database called airlines_db. Then you will have to create several tables.
+•	countries – contains information about the countries.
+•	flights – contains information about the flights.
+o	Each flight has a departure country, destination country and airplane.
+•	passengers – contains information about the passengers.
+o	Each passenger has a country.
+•	airplanes – contains information about the airplanes.
+•	flights_passengers – a many to many mapping table between the flights and the passengers.
+
+
+CREATE TABLE airplanes(
+	id INT  PRIMARY KEY AUTO_INCREMENT,
+	model VARCHAR(50) UNIQUE,
+	passengers_capacity INT,
+	tank_capacity DECIMAL(19,2),
+	cost  DECIMAL(19,2)
+	);
+
+	CREATE TABLE countries (
+	id INT  PRIMARY KEY AUTO_INCREMENT,
+	name VARCHAR(30) UNIQUE,
+	description TEXT,
+	currency VARCHAR(5)
+	);
+
+	CREATE TABLE flights (
+	id INT  PRIMARY KEY AUTO_INCREMENT,
+	flight_code VARCHAR(30) UNIQUE ,
+	departure_country INT,
+	destination_country INT,
+	airplane_id INT,
+	has_delay TINYINT(1),
+	departure DATETIME,
+	FOREIGN KEY (airplane_id) REFERENCES airplanes(id),
+	FOREIGN KEY (departure_country) REFERENCES countries(id),
+	FOREIGN KEY (destination_country) REFERENCES countries(id)
+	);
+
+	CREATE TABLE passengers(
+	id INT  PRIMARY KEY AUTO_INCREMENT,
+	first_name VARCHAR (30),
+	last_name VARCHAR (30),
+	country_id INT,
+	FOREIGN KEY (country_id) REFERENCES countries(id)
+	);
+
+	CREATE TABLE flights_passengers(
+	flight_id INT,
+	passenger_id INT,
+	FOREIGN KEY (flight_id) REFERENCES flights(id),
+	FOREIGN KEY (passenger_id) REFERENCES passengers(id)
+	);
+
+02.	Insert
+You will have to insert records of data into the airplanes table.
+The new data will be based on passengers with id equal or less than 5. Insert data in the airplanes table with the following values:
+•	model – set it to the first name of the passenger but reversed followed by '797'.
+•	passengers_capacity – set it to the number of characters of the passenger's last name multiplied by 17.
+•	tank_capacity – set it to the id of the passengers multiplied by 790.
+•	cost – set it to the number of characters of passenger's first name multiplied by 50.6 .
+
+INSERT INTO airplanes (model, passengers_capacity, tank_capacity, cost)
+SELECT 
+    CONCAT(REVERSE(first_name), '797') AS model,
+    LENGTH(last_name) * 17 AS passenger_capacity,
+    id * 790 AS tank_capacity,
+    LENGTH(first_name) * 50.6 AS cost
+FROM passengers
+WHERE id <= 5;
+
+
+03.	Update
+There was a mistake at the Armenian airport with the airplanes. You must change the airplanes for all flights that departure from Armenia. Raise the airplane_id by 1 for all flights flying from Armenia.
+
+UPDATE flights
+JOIN countries ON flights.departure_country = countries.id
+SET flights.airplane_id = flights.airplane_id + 1
+WHERE countries.name = 'Armenia';
+
+
+04.	Delete
+Delete all flights that don't have passengers.
+
+DELETE FROM flights
+WHERE id NOT IN (SELECT DISTINCT flight_id FROM flights_passengers);
+
+
+05.	Airplanes
+Extract from the airlines_db, info about the airplanes.
+Order the results by cost in descending order and then by id in descending.
+Required Columns
+•	id
+•	model
+•	passengers_capacity
+•	tank_capacity
+•	cost
+
+SELECT 
+    id,
+    model,
+    passengers_capacity,
+    tank_capacity,
+    cost
+FROM 
+    airplanes
+ORDER BY 
+    cost DESC,
+    id DESC;
+
+
+06.	Flights from 2022
+Write a query that returns: flight_code, departure_country, airplane_id and departure from table flights. Filter flights only from the 2022 year.
+Order the results ascending by airplane_id then by flight_code and show only the first 20 results.
+Required Columns
+•	flight_code
+•	departure_country
+•	airiplane_id
+•	departure
+
+SELECT 
+    flight_code,
+    departure_country,
+    airplane_id,
+    departure
+FROM 
+    flights
+WHERE 
+    YEAR(departure) = 2022
+ORDER BY 
+    airplane_id ASC,
+    flight_code ASC
+LIMIT 20;
+
+
+07.	Private flights
+Some passengers don’t have a booked flight but want to travel in private.
+Write a query that returns:  flight_code, full_name and country for all passengers that don’t have a booked flight.
+To find their private flight_code you must take the first 2 letters of their last name in upper case followed by their country id.
+Order by country_id in ascending order.
+Required Columns
+•	flight_code (first 2 characters from last name + country_id)
+•	full_name (first_name + " " + last_name)
+•	country_id
+
+SELECT 
+    CONCAT(UPPER(LEFT(last_name, 2)), country_id) AS flight_code,
+    CONCAT(first_name, ' ', last_name) AS full_name,
+    country_id
+FROM 
+    passengers
+WHERE 
+    id NOT IN (SELECT DISTINCT passenger_id FROM flights_passengers)
+ORDER BY 
+    country_id ASC;
+
+08.	Leading destinations
+Top leading magazine "Air Above" wants to write an article about the top destinations with over 20 booked tickets.
+Extract from the database, the countries that have 20 or more booked tickets for flights as a destination country by passengers.
+Order the results descending by booked_tickets.
+Required Columns
+•	name (country)
+•	currency
+•	booked_tickets (number of booked tickets from passengers to the country as a destination)
+
+
+SELECT 
+    countries.name AS name,
+    countries.currency AS currency,
+    COUNT(flights_passengers.passenger_id) AS booked_tickets
+FROM 
+    countries
+JOIN 
+    flights ON countries.id = flights.destination_country
+JOIN 
+    flights_passengers ON flights.id = flights_passengers.flight_id
+GROUP BY 
+    countries.name, countries.currency
+HAVING 
+    COUNT(flights_passengers.passenger_id) >= 20
+ORDER BY 
+    booked_tickets DESC;
+
+
+09.	Parts of the day
+From the database extract the flight_code and departure. Morning is from 5AM to 11:59AM, Afternoon is from 12PM to 4:59PM, Evening is from 5PM to 8:59PM and Night is from 9PM to 4:59AM.
+Order the results descending by flight_code. 
+Required Columns
+•	flight_code
+•	departure
+•	day_part (Morning is from 5AM to 11:59AM, Afternoon is from 12PM to 4:59PM, Evening is from 5PM to 8:59PM and Night is from 9PM to 4:59AM) 
+
+SELECT 
+    flight_code,
+    departure,
+    CASE 
+        WHEN TIME(departure) >= '05:00:00' AND TIME(departure) < '12:00:00' THEN 'Morning'
+        WHEN TIME(departure) >= '12:00:00' AND TIME(departure) < '17:00:00' THEN 'Afternoon'
+        WHEN TIME(departure) >= '17:00:00' AND TIME(departure) < '21:00:00' THEN 'Evening'
+        ELSE 'Night'
+    END AS day_part
+FROM 
+    flights
+ORDER BY 
+    flight_code DESC;

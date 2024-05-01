@@ -1,0 +1,225 @@
+The biggest international movie festival is about to begin. They hired a team of programmers to help manage their database. Now you are the leader of the team and you need to manage the system so they can keep track of all movies and actors and finally on the ceremony to give the annual awards to the winners.
+
+The softuni_imdb’s Database needs to hold information about movies, countries, actors, genres and movies additional info.
+Your task is to create a database called softuni_imdb. Then you will have to create several tables.
+•	countries – contains information about the countries.
+•	movies – contains information about the movies.
+o	Each movie has actors, country and genres.
+•	actors – contains information about the actors.
+o	Each actor has a country.
+•	genres – contains information about the genres.
+•	movies additional info – contains information about the customers.
+•	movies_actors – a many to many mapping table between the movies and the actors.
+•	genres_movies – a many to many mapping table between the genres and the movies.
+
+CREATE TABLE countries(
+id INT PRIMARY KEY AUTO_INCREMENT,
+name VARCHAR(30) UNIQUE,
+continent VARCHAR(30),
+currency VARCHAR(5)
+);
+
+CREATE TABLE genres(
+id INT PRIMARY KEY AUTO_INCREMENT,
+name VARCHAR(50) UNIQUE
+);
+
+CREATE TABLE actors(
+id INT PRIMARY KEY AUTO_INCREMENT,
+first_name VARCHAR(50),
+last_name VARCHAR(50),
+birthdate DATE,
+height INT,
+awards INT,
+country_id INT,
+FOREIGN KEY(country_id) REFERENCES countries (id)
+);
+
+CREATE TABLE movies_additional_info(
+id INT PRIMARY KEY AUTO_INCREMENT,
+rating DECIMAL(10,2),
+runtime INT,
+picture_url VARCHAR(80),
+budget DECIMAL(10,2),
+release_date DATE,
+has_subtitles BOOLEAN,
+description TEXT
+);
+
+CREATE TABLE movies(
+id INT PRIMARY KEY AUTO_INCREMENT,
+title VARCHAR(70) UNIQUE,
+country_id INT,
+movie_info_id INT UNIQUE,
+FOREIGN KEY(country_id) REFERENCES countries (id),
+FOREIGN KEY(movie_info_id) REFERENCES movies_additional_info(id)
+);
+
+CREATE TABLE movies_actors(
+movie_id INT,
+actor_id INT,
+FOREIGN KEY(movie_id) REFERENCES movies (id),
+FOREIGN KEY(actor_id) REFERENCES actors (id)
+);
+
+CREATE TABLE genres_movies(
+genre_id INT,
+movie_id INT,
+FOREIGN KEY(genre_id) REFERENCES genres (id),
+FOREIGN KEY(movie_id) REFERENCES movies (id)
+);
+
+02.	Insert
+You will have to insert records of data into the actors table.
+The new data will be based on actors with id equal or less than 10. Insert data in the actors table with the following values:
+•	first_name – set it to the first name of the actor but reversed.
+•	last_name – set it to the last name of the actor but reversed.
+•	birthdate – set it to the birthdate of the actor but 2 days earlier.
+•	height – set it to the height of the actor plus 10.
+•	awards – set them to the country_id.
+•	country_id – set it to the id of Armenia.
+
+INSERT INTO actors (first_name, last_name, birthdate, height, awards, country_id)
+SELECT 
+    REVERSE(first_name) AS first_name,
+    REVERSE(last_name) AS last_name,
+    DATE_SUB(birthdate, INTERVAL 2 DAY) AS birthdate,
+    height + 10 AS height,
+    country_id AS awards,
+    (SELECT id FROM countries WHERE name = 'Armenia') AS country_id
+FROM actors
+WHERE id <= 10;
+
+03.	Update
+Reduce all movies runtime by 10 minutes for movies with movies_additional_info id equal to or greater than 15 and less than 25 (inclusive).
+
+UPDATE (movies_additional_info)
+SET runtime = runtime - 10
+WHERE id >=15 AND id <=25;
+
+04.	Delete
+Delete all countries that don’t have movies.
+
+DELETE FROM countries
+WHERE id NOT IN (
+    SELECT DISTINCT country_id
+    FROM movies
+);
+
+05.	Countries
+Extract from the softuni_imdb system database, info about the name of countries.
+Order the results by currency in descending order and then by id.
+Required Columns
+•	id (countries)
+•	name
+•	continent
+•	currency
+
+SELECT
+id,
+name,
+continent,
+currency
+FROM countries
+ORDER BY currency  DESC, id;
+
+
+06.	Old movies
+Write a query that returns: title, runtime, budget and release_date from table movies_additional_info. Filter movies which have been released from 1996 to 1999 year (inclusive).
+Order the results ascending by runtime then by id and show only the first 20 results.
+Required Columns
+•	id
+•	title
+•	runtime
+•	budget
+•	release_date
+
+SELECT 
+    mai.id AS id, 
+    m.title AS title, 
+    mai.runtime AS runtime, 
+    mai.budget AS budget, 
+    mai.release_date AS release_date
+FROM 
+    movies_additional_info AS mai
+JOIN 
+    movies AS m ON mai.id = m.movie_info_id
+WHERE 
+    mai.release_date BETWEEN '1996-01-01' AND '1999-12-31'
+ORDER BY 
+    mai.runtime ASC, mai.id ASC
+LIMIT 20;
+
+07.	Movie casting
+Some actors are free and can apply the casting for a new movie. You must search for them and prepare their documents.
+Write a query that returns: the full name, email, age and height of all actors that are not participating in a movie.
+To find their email you must take their last name reversed followed by the number of characters of their last name and then the casting email "@cast.com"
+Order by height in ascending order.
+Required Columns
+•	full_name (first_name + " " + last_name)
+•	email (last_name reversed + number of characters from the last_name + @cast.com)
+•	age (2022 – the year of the birth)
+•	height
+
+SELECT 
+    CONCAT(first_name, ' ', last_name) AS full_name,
+    CONCAT(REVERSE(last_name), LENGTH(last_name), '@cast.com') AS email,
+    2022 - YEAR(birthdate) AS age,
+    height
+FROM 
+    actors
+WHERE 
+    id NOT IN (SELECT DISTINCT actor_id FROM movies_actors)
+ORDER BY 
+    height ASC;
+
+08.	International Festival
+The international movie festival is about to begin. We need to find the countries that are nominated to host the event.
+Extract from the database, the name of the country and the number of movies created in this country. The number of movies must be higher or equal to 7.
+Order the results descending by name.
+Required Columns
+•	name (country)
+•	movies_count (number of movies created in the country)
+
+SELECT 
+    c.name AS country,
+    COUNT(*) AS movies_count
+FROM  countries c
+ JOIN 
+    movies m ON c.id = m.country_id
+GROUP BY 
+    c.id, c.name
+HAVING 
+    movies_count >= 7
+ORDER BY 
+    country DESC;
+
+
+09.	Rating system
+From the database extract the title, rating, subtitles, and the budget of movies. If the rating is equal or less than 4 the user must see "poor", above 4 and less or equal to 7 "good" and above that it should display "excellent". If the movie has subtitles the user should see "english", otherwise "-".
+Order the results descending by budget. 
+Required Columns
+•	title
+•	rating (less or equal to 4 – "poor", above 4 and less or equal to 7 – "good", above 7 – "excellent")
+•	subtitles (if it has subtitles it– "english", otherwise – "-")
+•	budget
+
+  SELECT 
+    m.title,
+    CASE 
+        WHEN mai.rating <= 4 THEN 'poor'
+        WHEN mai.rating <= 7 THEN 'good'
+        ELSE 'excellent'
+    END AS rating,
+    CASE 
+        WHEN mai.has_subtitles = 1 THEN 'english'
+        ELSE '-'
+    END AS subtitles,
+    mai.budget
+FROM 
+    movies m
+JOIN 
+    movies_additional_info mai ON m.movie_info_id = mai.id
+ORDER BY 
+    mai.budget DESC;
+

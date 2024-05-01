@@ -1,0 +1,213 @@
+A real estate database is an indispensable tool for managing and optimizing real estate operations. With this task, the objective was to create a comprehensive database that encompasses various aspects of the real estate industry. The database includes tables for cities, property types, properties, agents, buyers, property offers, and property transactions. This centralized system enables efficient storage and retrieval of crucial information related to cities, property details, agents, buyers, and the offers and transactions associated with properties. By implementing this database, real estate professionals can effectively manage property listings, track transactions, and ensure seamless communication between agents and buyers. This powerful tool enhances productivity, streamlines processes, and fosters a safe and efficient real estate environment.
+The real_estate_db’s Database needs to hold information about agents, buyers, cities, properties, property_types, property_transactions and property_offers.
+Your task is to create a database called real_estate_db. Then you will have to create several tables.
+•	cities – contains information about the cities.
+•	property_types – contains information about the different types of property.
+•	properties – contains information about the properties.
+o	Each property has a city and property_type.
+•	agents – contains information about the agents.
+o	Each agent has a city.
+•	buyers – contains information about the buyers.
+o	Each buyer has a city.
+•	property_offers – a many to many mapping table between the properties and the agents that contains information about the properties offers.
+o	Each property_offer has a property and agent.
+•	property_transactions– contains information about each property transaction.
+o	Each property_transaction has a property and buyer.
+CREATE TABLE cities(
+id INT PRIMARY KEY AUTO_INCREMENT,
+name VARCHAR(60) UNIQUE
+);
+
+CREATE TABLE property_types(
+id INT PRIMARY KEY AUTO_INCREMENT,
+type VARCHAR(40) UNIQUE,
+description TEXT
+);
+
+
+CREATE TABLE properties(
+id INT PRIMARY KEY AUTO_INCREMENT,
+address VARCHAR(80) UNIQUE,
+price DECIMAL(19,2),
+area DECIMAL(19,2),
+property_type_id INT,
+city_id int,
+FOREIGN KEY(property_type_id) REFERENCES property_types(id),
+FOREIGN KEY(city_id) REFERENCES cities(id)
+);
+
+CREATE TABLE agents(
+id INT PRIMARY KEY AUTO_INCREMENT,
+first_name VARCHAR(40),
+last_name VARCHAR(40),
+phone VARCHAR(20) UNIQUE,
+email VARCHAR(50) UNIQUE,
+city_id INT,
+FOREIGN KEY(city_id) REFERENCES cities(id)
+);
+
+
+CREATE TABLE buyers(
+id INT PRIMARY KEY AUTO_INCREMENT,
+first_name VARCHAR(40),
+last_name VARCHAR(40),
+phone VARCHAR(20) UNIQUE,
+email VARCHAR(50) UNIQUE,
+city_id INT,
+FOREIGN KEY(city_id) REFERENCES cities(id)
+);
+
+CREATE TABLE property_offers(
+property_id INT,
+agent_id INT,
+price DECIMAL(19,2),
+offer_datetime DATETIME,
+FOREIGN KEY(property_id) REFERENCES properties(id),
+FOREIGN KEY(agent_id) REFERENCES agents(id)
+);
+
+CREATE TABLE property_transactions(
+id INT PRIMARY KEY AUTO_INCREMENT,
+property_id INT,
+buyer_id INT,
+transaction_date DATE,
+bank_name VARCHAR(30),
+iban VARCHAR(40) UNIQUE,
+is_successful BOOLEAN,
+FOREIGN KEY(property_id) REFERENCES properties(id),
+FOREIGN KEY(buyer_id) REFERENCES buyers(id)
+);
+
+02.	Insert
+You will have to insert records of data into the property_transactions table.
+The new data will be based on property_offers with agent_id equal or less than 2. Insert data in the property_transactions table with the following values:
+•	property_id – set it to the agent_id plus the days of the offer's datetime.
+•	buyer_id – set it to the agent_id plus the month number of the offer's datetime.
+•	transaction_date– set it to the date only of the offer's datetime.
+•	bank_name – set it to "Bank" followed by whitespace and then followed by agent_id.
+•	iban – set it to "BG" followed by price and then followed by agent_id.
+•	is_successful – set it to true.
+
+
+INSERT INTO property_transactions (property_id, buyer_id, transaction_date, bank_name, iban, is_successful)
+SELECT
+    po.agent_id + DAY(po.offer_datetime) AS property_id,
+    po.agent_id + MONTH(po.offer_datetime) AS buyer_id,
+    DATE(po.offer_datetime) AS transaction_date,
+    CONCAT('Bank ', po.agent_id) AS bank_name,
+    CONCAT('BG', po.price, po.agent_id) AS iban,
+    TRUE AS is_successful
+FROM
+    property_offers po
+WHERE
+    po.agent_id <= 2;
+
+03.	Update
+There are some tax frauds and you have to correct the price for some properties. You must reduce the price by 50 000 for all properties that cost more or equal to 800 000.
+
+UPDATE (properties)
+SET price = price - 50000
+WHERE price>=800000;
+
+04.	Delete
+Delete all property_transactions that are not successful.
+
+DELETE FROM property_transactions
+WHERE is_successful = FALSE;
+
+05.	Agents
+Extract from the real_estate_db, info about the agents.
+Order the results by city_id in descending and then by phone in descending.
+Required Columns
+•	id
+•	first_name
+•	last_name
+•	phone
+•	email
+•	city_id
+
+
+SELECT
+id,
+first_name,
+last_name,
+phone,
+email,
+city_id
+FROM agents
+ORDER BY city_id DESC, phone DESC;
+
+
+
+06.	Offers from 2021
+Write a query that returns: property_id, agent_id, price and offer_datetime from table property_offers. Filter offers only from 2021 year.
+Order the results ascending by price and show only the first 10 results.
+Required Columns
+•	property_id
+•	agent_id
+•	price
+•	offer_datetime
+
+SELECT property_id, agent_id, price, offer_datetime
+FROM property_offers
+WHERE YEAR(offer_datetime) = 2021
+ORDER BY price ASC
+LIMIT 10;
+
+
+07.	Properties without offers
+Some properties are not included in offers and don’t have an agent.
+Write a query that returns:  agent_name and price for all properties that are not included in any offer.
+To find their agent_name you must take the first 6 letters from the address and to find the offered price you need to get the number of characters in the address and multiply it by 5430.
+Order by agent_name in descending order and then by price in descending order.
+Required Columns
+•	agent_name (first 6 characters from address)
+•	price (number of characters in the address multiplied by 5430 
+
+
+SELECT LEFT(p.address, 6) AS agent_name,
+       CHAR_LENGTH(p.address) * 5430 AS price
+FROM properties p
+LEFT JOIN property_offers po ON p.id = po.property_id
+WHERE po.property_id IS NULL
+AND p.address IS NOT NULL
+ORDER BY agent_name DESC, price DESC;
+
+
+08.	Best Banks
+Our popular real estate app is set to highlight the top banks that have facilitated 9 or more transactions within our database.
+Extract from the database, the banks that have 9 or more ibans used for transactions.
+Order the results by count in descending and then by bank_name in ascending.
+Required Columns
+•	bank_name 
+•	count
+
+SELECT bank_name, 
+COUNT(iban) AS count
+FROM property_transactions
+GROUP BY bank_name
+HAVING COUNT(iban) >= 9
+ORDER BY count DESC, bank_name ASC;
+
+09.	Size of the area
+From the database extract the address and area and assign the size. If it is less or equal 100 is "small", "medium" is lesser or equal to 200, "large"is lesser or equal to 500 and above 500 is "extra large".
+Order the results ascending by area and then by address in descending. 
+Required Columns
+•	address
+•	area
+•	size (small  is lesser or equal 100, medium is  lesser or equal to 200, large is lesser or equal to 500 and above 500 is extra large) 
+
+SELECT 
+    address,
+    area,
+    CASE
+        WHEN area <= 100 THEN 'small'
+        WHEN area <= 200 THEN 'medium'
+        WHEN area <= 500 THEN 'large'
+        ELSE 'extra large'
+    END AS size
+FROM 
+    properties
+ORDER BY 
+    area ASC,
+    address DESC;
